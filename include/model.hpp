@@ -1,0 +1,127 @@
+#ifndef AC1CD054_CDCC_489E_A3CD_41138FE1DC4B
+#define AC1CD054_CDCC_489E_A3CD_41138FE1DC4B
+
+#include <data.hpp>
+#include <random>
+#include <threadpool.hpp>
+
+namespace mc
+{
+
+    template <typename T> // Curiesly repeating template pattern.
+    class ConfigurableModel
+    {
+    public:
+        T &with_steps(size_t n)
+        {
+            steps_ = n;
+            return self();
+        }
+        T &with_simulations(size_t n)
+        {
+            simulations_ = n;
+            return self();
+        }
+        T &with_dt(double dt)
+        {
+            dt_ = dt;
+            return self();
+        }
+        T &with_seed(uint32_t s)
+        {
+            seed_ = s;
+            rng_.seed(s);
+            return self();
+        }
+
+    protected:
+        double draw_standard_normal()
+        {
+            static thread_local std::normal_distribution<double> N01{0.0, 1.0};
+            return N01(rng_);
+        }
+
+        size_t steps_ = 360;
+        size_t simulations_ = 1000;
+        double dt_ = 1.0 / 252.0;
+        uint32_t seed_ = 5489u;
+
+    private:
+        std::mt19937 rng_{seed_};
+        T &self() { return static_cast<T &>(*this); }
+    };
+
+    class BlackScholesModel final : public ConfigurableModel<BlackScholesModel>
+    {
+    public:
+        BlackScholesModel(double r, double sigma, double s0, double q = 0.0)
+            : r_(r), sigma_(sigma), s0_(s0), q_(q) {}
+
+        BlackScholesModel &with_sigma(double v)
+        {
+            sigma_ = v;
+            return *this;
+        }
+        BlackScholesModel &with_s0(double v)
+        {
+            s0_ = v;
+            return *this;
+        }
+        BlackScholesModel &with_r(double v)
+        {
+            r_ = v;
+            return *this;
+        }
+        BlackScholesModel &with_q(double v)
+        {
+            q_ = v;
+            return *this;
+        }
+
+        SimulationData simulate()
+        {
+            SimulationData sims;
+            sims.reserve(simulations_);
+
+            ThreadPool *pool = ThreadPool::getInstance();
+            pool->start();
+            std::vector<TaskHandle> futures(simulations_);
+            for (size_t i = 0; i < simulations_; ++i)
+            {
+                auto task = [&]()
+                {
+                    PathData path;
+                    path.reserve(steps_);
+                    const double drift = (r_ - q_) - 0.5 * sigma_ * sigma_;
+                    const double vol_dt = sigma_ * std::sqrt(dt_);
+                    double spot = s0_;
+                    for (size_t j = 0; j < steps_; ++j)
+                    {
+                        const double t = j * dt_;
+                        const double df = std::exp(-r_ * t);
+
+                        spot *= std::exp(drift * dt_ + vol_dt * draw_standard_normal());
+                        path.push_back(df, spot, j);
+                    }
+                    sims.emplace_back(std::move(path));
+                    return true;
+                };
+                futures[i] = pool->spawnTask(task);
+            };
+            for (size_t i = 0; i < simulations_; ++i)
+            {
+                pool->activeWait(futures[i]);
+            }
+            return sims; // rvo
+        }
+
+    private:
+        double sigma_,
+            s0_,
+            r_,
+            q_;
+    };
+
+} // namespace mc
+
+#endif /* AC1CD054_CDCC_489E_A3CD_41138FE1DC4B */

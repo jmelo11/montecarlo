@@ -1,2 +1,5 @@
 # montecarlo
-Simple Monte Carlo Engine in C++
+
+Simple Monte Carlo Pricing Engine in C++
+
+## Description
