@@ -78,6 +78,10 @@ namespace mc
             return *this;
         }
 
+        // The simulate function is the main function that runs the simulation
+        // It uses the ThreadPool to spawn tasks for each simulation. Other ways
+        // to do this would be to use OpenMP, std::for_each, but the thread pool
+        // approach is OS independent.
         SimulationData simulate()
         {
             SimulationData sims;
