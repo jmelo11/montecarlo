@@ -3,6 +3,7 @@
 #include <pricer.hpp>
 #include <iostream>
 #include <threadpool.hpp>
+#include <algorithm>
 
 using namespace mc;
 
@@ -30,14 +31,16 @@ int main()
     // Visitor pattern example
     Pricer pricer(data);
     std::vector<Instrument> portfolio = create_portfolio();
-    // for (const auto &inst : portfolio)
-    // {
-    //     std::visit(pricer, inst);
-    // }
 
-    // or we can do
     std::for_each(portfolio.begin(), portfolio.end(), [&pricer](const auto &inst)
                   { std::visit(pricer, inst); });
+
+    // we could do (windows), which allows for Execution Policy
+    // std::for_each(std::execution::par, portfolio.begin(), portfolio.end(), [&pricer](const auto &inst)
+    //               { std::visit(pricer, inst); });
+
+    // since we are only reading the data and updating an atomic
+    // variable (npv_), we don't need to lock the data -> the pricer is thread safe.
 
     double portfolio_npv = pricer.npv();
     std::cout << "Portfolio NPV: " << portfolio_npv << std::endl;

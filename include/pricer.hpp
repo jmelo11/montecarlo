@@ -55,7 +55,7 @@ namespace mc
         double npv() const { return npv_; };
 
     private:
-        double npv_ = 0.0;
+        std::atomic<double> npv_ = 0.0; // atomic to avoid race conditions
         const SimulationData &data_;
     };
 } // namespace mc
