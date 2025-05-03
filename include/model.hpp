@@ -7,8 +7,9 @@
 
 namespace mc
 {
-
-    template <typename T> // Curiesly repeating template pattern.
+    // The idea is that a model can be configured with a number of parameters
+    template <typename T>
+    // CRTP: Curiously Recurring Template Pattern
     class ConfigurableModel
     {
     public:
@@ -34,6 +35,8 @@ namespace mc
             return self();
         }
 
+        virtual SimulationData simulate() = 0;
+
     protected:
         double draw_standard_normal()
         {
@@ -48,6 +51,8 @@ namespace mc
 
     private:
         std::mt19937 rng_{seed_};
+        
+        // we need a way to return the derived class in the base class methods
         T &self() { return static_cast<T &>(*this); }
     };
 
@@ -82,7 +87,7 @@ namespace mc
         // It uses the ThreadPool to spawn tasks for each simulation. Other ways
         // to do this would be to use OpenMP, std::for_each, but the thread pool
         // approach is OS independent.
-        SimulationData simulate()
+        SimulationData simulate() override
         {
             SimulationData sims;
             sims.reserve(simulations_);
