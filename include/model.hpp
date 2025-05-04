@@ -15,7 +15,7 @@ namespace mc
     public:
         T &with_steps(size_t n)
         {
-            steps_ = n;
+            steps_ = n + 1;
             return self();
         }
         T &with_simulations(size_t n)
@@ -51,7 +51,7 @@ namespace mc
 
     private:
         std::mt19937 rng_{seed_};
-        
+
         // we need a way to return the derived class in the base class methods
         T &self() { return static_cast<T &>(*this); }
     };
@@ -104,13 +104,14 @@ namespace mc
                     const double drift = (r_ - q_) - 0.5 * sigma_ * sigma_;
                     const double vol_dt = sigma_ * std::sqrt(dt_);
                     double spot = s0_;
-                    for (size_t j = 0; j < steps_; ++j)
+                    path.push_back(1.0, spot, 1);
+                    for (size_t j = 1; j < steps_; ++j)
                     {
                         const double t = j * dt_;
                         const double df = std::exp(-r_ * t);
 
                         spot *= std::exp(drift * dt_ + vol_dt * draw_standard_normal());
-                        path.push_back(df, spot, j);
+                        path.push_back(df, spot, j+1);
                     }
                     sims.emplace_back(std::move(path));
                     return true;

@@ -13,20 +13,20 @@ thread_local size_t ThreadPool::myTLSNum = 0;
 auto create_portfolio()
 {
     std::vector<Instrument> instruments;
-    instruments.push_back(EuropeanOption(100, 1, OptionType::PUT));
-    instruments.push_back(KnockAndOutOption(90, 100, 2));
+    instruments.push_back(EuropeanOption(100, 360, OptionType::PUT)); // max(spot-strike, 0) // E[max(spot_T-strike, 0)]*exp(-rT)
+    instruments.push_back(KnockAndOutOption(90, 100, 720));           // max(spot-strike, 0) // E[ if spot_i < barrera : max(spot_T-strike, 0), 0]*exp(-rT)
     return instruments;
 }
 
 int main()
 {
-    // Builder pattern example
+
     SimulationData data = BlackScholesModel(0.05, 0.2, 100)
                               .with_seed(1234)
                               .with_steps(720)
                               .with_dt(1.0 / 360)
-                              .with_simulations(10'000)
-                              .simulate();
+                              .with_simulations(1'000'000) // python: 1_000_000
+                              .simulate(); // geometric brownian motion
 
     // Visitor pattern example
     Pricer pricer(data);

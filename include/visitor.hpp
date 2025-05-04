@@ -5,7 +5,6 @@
 
 namespace mc
 {
-
     class EuropeanOption;
     class KnockAndOutOption;
 

@@ -60,9 +60,9 @@ namespace mc
         const std::vector<Date> &get_times() const { return time; }
 
     private:
-        std::vector<double> df;
-        std::vector<double> spot;
-        std::vector<Date> time;
+        std::vector<double> df; // exp(-rT)
+        std::vector<double> spot; // S+ds
+        std::vector<Date> time; // 1,2,3,4...
     };
 } // namespace mc
 
