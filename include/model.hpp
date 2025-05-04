@@ -99,17 +99,11 @@ namespace mc
         {
             SimulationData sims;
             sims.resize(simulations_);
-
             ThreadPool *pool = ThreadPool::getInstance();
 
-            if (mt_)
-            {
-                pool->start(std::thread::hardware_concurrency() - 1);
-            }
-            else
-            {
-                pool->start(0);
-            }
+            mt_ ? pool->start()
+                : pool->start(0);
+
             std::vector<TaskHandle> futures(simulations_);
             for (size_t i = 0; i < simulations_; ++i)
             {

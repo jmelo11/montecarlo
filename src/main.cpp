@@ -27,7 +27,7 @@ int main()
                               .with_seed(1234)
                               .with_steps(720)
                               .with_dt(1.0 / 360.0)
-                              .with_mt(false)
+                              .with_mt(true)
                               .with_simulations(100'000)
                               .simulate();
 
