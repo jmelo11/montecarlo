@@ -32,7 +32,6 @@ namespace mc
         T &with_seed(uint32_t s)
         {
             seed_ = s;
-            rng_.seed(s);
             return self();
         }
 
@@ -47,6 +46,7 @@ namespace mc
     protected:
         double draw_standard_normal()
         {
+            static thread_local std::mt19937 rng_{seed_};
             static thread_local std::normal_distribution<double> N01{0.0, 1.0};
             return N01(rng_);
         }
@@ -58,8 +58,6 @@ namespace mc
         bool mt_ = false; // multithreaded
 
     private:
-        std::mt19937 rng_{seed_};
-
         // we need a way to return the derived class in the base class methods
         T &self() { return static_cast<T &>(*this); }
     };
@@ -101,7 +99,7 @@ namespace mc
             sims.resize(simulations_);
             ThreadPool *pool = ThreadPool::getInstance();
 
-            mt_ ? pool->start()
+            mt_ ? pool->start(std::thread::hardware_concurrency() / 2)
                 : pool->start(0);
 
             std::vector<TaskHandle> futures(simulations_);
@@ -109,7 +107,7 @@ namespace mc
             {
                 auto task = [&, i]()
                 {
-                    PathData path;
+                    PathData &path = sims[i];
                     path.reserve(steps_);
                     const double drift = (r_ - q_) - 0.5 * sigma_ * sigma_;
                     const double vol_dt = sigma_ * std::sqrt(dt_);
@@ -124,7 +122,6 @@ namespace mc
                         spot *= std::exp(drift * dt_ + vol_dt * w);
                         path.push_back(df, spot, j + 1);
                     }
-                    sims[i] = std::move(path);
                     return true;
                 };
                 futures[i] = pool->spawnTask(task);
