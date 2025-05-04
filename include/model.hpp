@@ -4,6 +4,7 @@
 #include <data.hpp>
 #include <random>
 #include <threadpool.hpp>
+#include <iostream>
 
 namespace mc
 {
@@ -35,6 +36,12 @@ namespace mc
             return self();
         }
 
+        T &with_mt(bool mt)
+        {
+            mt_ = mt;
+            return self();
+        }
+
         virtual SimulationData simulate() = 0;
 
     protected:
@@ -48,6 +55,7 @@ namespace mc
         size_t simulations_ = 1000;
         double dt_ = 1.0 / 252.0;
         uint32_t seed_ = 5489u;
+        bool mt_ = false; // multithreaded
 
     private:
         std::mt19937 rng_{seed_};
@@ -90,14 +98,22 @@ namespace mc
         SimulationData simulate() override
         {
             SimulationData sims;
-            sims.reserve(simulations_);
+            sims.resize(simulations_);
 
             ThreadPool *pool = ThreadPool::getInstance();
-            pool->start();
+
+            if (mt_)
+            {
+                pool->start(std::thread::hardware_concurrency() - 1);
+            }
+            else
+            {
+                pool->start(0);
+            }
             std::vector<TaskHandle> futures(simulations_);
             for (size_t i = 0; i < simulations_; ++i)
             {
-                auto task = [&]()
+                auto task = [&, i]()
                 {
                     PathData path;
                     path.reserve(steps_);
@@ -109,11 +125,12 @@ namespace mc
                     {
                         const double t = j * dt_;
                         const double df = std::exp(-r_ * t);
+                        const double w = draw_standard_normal();
 
-                        spot *= std::exp(drift * dt_ + vol_dt * draw_standard_normal());
-                        path.push_back(df, spot, j+1);
+                        spot *= std::exp(drift * dt_ + vol_dt * w);
+                        path.push_back(df, spot, j + 1);
                     }
-                    sims.emplace_back(std::move(path));
+                    sims[i] = std::move(path);
                     return true;
                 };
                 futures[i] = pool->spawnTask(task);
